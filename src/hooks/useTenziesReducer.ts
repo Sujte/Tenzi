@@ -1,6 +1,8 @@
 import { nanoid } from "nanoid";
 import { useReducer } from "react";
 
+//test comment
+
 const createNewGameValues = () => {
   const array: { value: number; isHeld: boolean; id: string }[] = [];
   for (let i = 0; i < 10; i++) {
