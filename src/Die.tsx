@@ -1,23 +1,19 @@
-function Die(prop: {
+interface DieProps {
   value: number;
-  hold: () => string;
+  hold: () => void;
   isHeld: boolean;
-  key: string;
-}) {
-  const dots = (value: number) => {
-    const dotNum = [];
-    for (let i = value; i > 0; i--) {
-      dotNum.push(<div className={`dot dot-${i}`}></div>);
-    }
-    const fullDotNum = [
-      <div className={`dotgroup${value}`}> {[...dotNum]} </div>,
-    ];
-    return fullDotNum;
-  };
+}
 
+function Die({ value, hold, isHeld }: DieProps) {
   return (
-    <div className={prop.isHeld ? "die-clicked" : "die"} onClick={prop.hold}>
-      {dots(prop.value)}
+    <div className={isHeld ? "die-clicked" : "die"} onClick={hold}>
+      <div className={`dotgroup${value}`}>
+        {Array(value)
+          .fill(null)
+          .map((value, index) => {
+            return <div className={`dot dot-${index + 1}`}></div>;
+          })}
+      </div>
     </div>
   );
 }

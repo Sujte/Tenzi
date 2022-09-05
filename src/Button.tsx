@@ -1,9 +1,11 @@
-import { MouseEventHandler } from "react";
+import { MouseEventHandler, ReactNode } from "react";
 
-function Button(prop: {
+interface ButtonProps {
   roll: MouseEventHandler<HTMLButtonElement>;
-  buttonText: string;
-}) {
-  return <button onClick={prop.roll}> {prop.buttonText}</button>;
+  children: ReactNode;
+}
+
+function Button({ children, roll }: ButtonProps) {
+  return <button onClick={roll}> {children}</button>;
 }
 export default Button;

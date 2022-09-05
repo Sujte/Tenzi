@@ -4,6 +4,7 @@ import Score from "./Score";
 import { useEffect, useState } from "react";
 import { nanoid } from "nanoid";
 import Confetti from "react-confetti";
+import { useTenziesReducer } from "./hooks/useTenziesReducer";
 
 const values = () => {
   const array: { value: number; isHeld: boolean; id: string }[] = [];
@@ -16,6 +17,7 @@ const values = () => {
 };
 
 function App() {
+  const { state, restartGame, rollDice, selectDie } = useTenziesReducer();
   const [newArr, setNewArr] = useState(values());
   const [tenzies, setTenzies] = useState(false);
   const [rollCount, setRollCount] = useState(0);
@@ -107,12 +109,6 @@ function App() {
     return timeConverter();
   };
 
-  const toggle = (key: string) => {
-    const toggled = checkIfTrue(newArr, key);
-    setNewArr(toggled);
-    return key;
-  };
-
   const startTime = () => {
     const count = newArr.filter((x) => x.isHeld === true);
     if (count.length === 1) {
@@ -120,90 +116,36 @@ function App() {
     }
   };
 
-  const checkIfTrue = (
-    array: { value: number; isHeld: boolean; id: string }[],
-    key: string
-  ) => {
-    return array.map((x) => {
-      if (x.id === key) {
-        x.isHeld = !x.isHeld;
-        return x;
-      }
-      return x;
-    });
-  };
+  const heading = tenzies ? "You win!" : "Tenzi";
+  const rollText = tenzies
+    ? "Your time:"
+    : "Roll until all dice are the same. Click each die to freeze it at its current value between rolls.";
 
-  const makeTen = () => {
-    return newArr.map((x) => (
-      <Die
-        value={x.value}
-        isHeld={x.isHeld}
-        key={x.id}
-        hold={() => toggle(x.id)}
-      />
-    ));
-  };
-
-  const name = () => {
-    if (tenzies === false) {
-      return "Tenzi";
-    } else {
-      return "You win!";
-    }
-  };
-
-  const text = () => {
-    if (tenzies === false) {
-      return "Roll until all dice are the same. Click each die to freeze it at its current value between rolls.";
-    } else {
-      return "Your time:";
-    }
-  };
-
-  const roll = () => {
-    if (tenzies === false) {
-      return "Roll";
-    } else {
-      return "New game";
-    }
-  };
-
-  const restart = () => {
-    if (tenzies === false) {
-      setNewArr(freeze(newArr));
-      setRollCount((num) => num + 1);
-    } else {
-      setDuration("00:00");
-      setNewArr(values());
-      setTenzies(false);
-      setRollCount(0);
-    }
-  };
-
-  const freeze = (array: { value: number; isHeld: boolean; id: string }[]) => {
-    const newArray = array.map((x) => {
-      if (x.isHeld === false) {
-        const num = Math.ceil(Math.random() * 6);
-        return { value: num, isHeld: false, id: nanoid() };
-      } else {
-        return x;
-      }
-    });
-    return newArray;
-  };
+  const rollButtonText = tenzies ? "New game" : "New game";
 
   return (
     <>
       <div className="background">
-        {tenzies && <Confetti />}
-        <h1>{name()}</h1>
-        <p className="text">{text()}</p>
-        {tenzies && <p className="time">{duration}</p>}
-        <div className="group">{makeTen()}</div>
-        <Button roll={() => restart()} buttonText={roll()} />
+        {state.hasWon && <Confetti />}
+        <h1>{heading}</h1>
+        <p className="text">{rollText}</p>
+        {state.hasWon && <p className="time">{duration}</p>}
+        <div className="group">
+          {state.dieValues.map((x) => (
+            <Die
+              value={x.value}
+              isHeld={x.isHeld}
+              key={x.id}
+              hold={() => selectDie(x.id)}
+            />
+          ))}
+        </div>
+        <Button roll={state.hasWon ? restartGame : rollDice}>
+          {rollButtonText}
+        </Button>
       </div>
       <Score
-        rollCount={rollCount}
+        rollCount={state.rollCount}
         bestTime={bestTime()}
         bestRoll={bestRoll()}
       />
