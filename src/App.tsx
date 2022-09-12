@@ -1,9 +1,10 @@
 import Die from "./Die";
 import Button from "./Button";
 import Score from "./Score";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { nanoid } from "nanoid";
 import Confetti from "react-confetti";
+import reducer, { ACTION_TYPES } from "./reducer";
 
 const values = () => {
   const array: { value: number; isHeld: boolean; id: string }[] = [];
@@ -16,48 +17,53 @@ const values = () => {
 };
 
 function App() {
-  const [newArr, setNewArr] = useState(values());
-  const [tenzies, setTenzies] = useState(false);
-  const [rollCount, setRollCount] = useState(0);
-  const [time, setTime] = useState(Date.now());
-  const [duration, setDuration] = useState("00:00");
-  const [scoreArray, setScoreArray] = useState(
-    JSON.parse(localStorage.getItem("scores")!) || []
-  );
+  const [state, dispatch] = useReducer(reducer, {
+    diceArray: values(),
+    tenzies: false,
+    rollCount: 0,
+    gameDuration: Date.now(),
+    stringGameDuration: "00:00",
+    scoreArray: JSON.parse(localStorage.getItem("scores")!) || [],
+  });
 
   useEffect(() => {
-    const value = newArr.map((x) => x.value);
-    const ifTrue = newArr.map((y) => y.isHeld);
+    const value = state.diceArray.map((x) => x.value);
+    const ifTrue = state.diceArray.map((y) => y.isHeld);
     if (value.every((a) => a === value[0]) && ifTrue.every((a) => a === true)) {
-      setTenzies(true);
-      setDuration(convertedTime);
+      dispatch({ type: ACTION_TYPES.TENZIES, payload: { tenzies: true } });
+      dispatch({
+        type: ACTION_TYPES.STRING_GAME_DURATION,
+        payload: { stringGameDuration: convertedTime() },
+      });
       const ans = arrayMaker();
     } else {
       startTime();
     }
-  }, [newArr]);
+  }, [state.diceArray]);
 
   useEffect(() => {
-    localStorage.setItem(" scores", JSON.stringify(scoreArray));
-  }, [scoreArray]);
+    localStorage.setItem(" scores", JSON.stringify(state.scoreArray));
+  }, [state.scoreArray]);
 
   const bestTime = () => {
-    if (scoreArray.length === 0) {
+    if (state.scoreArray.length === 0) {
       return "00:00";
     } else {
-      const secondsArr = scoreArray.map((x: { seconds: number }) => x.seconds);
+      const secondsArr = state.scoreArray.map(
+        (x: { seconds: number }) => x.seconds
+      );
       const bestestTime = Math.min(...secondsArr);
       const bestIndex = secondsArr.indexOf(bestestTime);
-      const result = scoreArray[bestIndex].converted;
+      const result = state.scoreArray[bestIndex].converted;
       return result;
     }
   };
 
   const bestRoll = () => {
-    if (scoreArray.length === 0) {
+    if (state.scoreArray.length === 0) {
       return 0;
     } else {
-      const rollArray = scoreArray.map((x: { roll: number }) => x.roll);
+      const rollArray = state.scoreArray.map((x: { roll: number }) => x.roll);
       const result = Math.min(...rollArray);
       return result;
     }
@@ -67,14 +73,17 @@ function App() {
     const scoreObj = {
       seconds: countedSeconds(),
       converted: convertedTime(),
-      roll: rollCount,
+      roll: state.rollCount,
       id: nanoid(),
     };
-    setScoreArray((prev: object[]) => [scoreObj, ...prev]);
+    dispatch({
+      type: ACTION_TYPES.SCORE_ARRAY,
+      payload: { scoreArray: [scoreObj, ...state.scoreArray] },
+    });
   };
 
   const countedSeconds = () => {
-    const seconds = Math.round((Date.now() - time) / 1000);
+    const seconds = Math.round((Date.now() - state.gameDuration) / 1000);
     return seconds;
   };
 
@@ -108,33 +117,31 @@ function App() {
   };
 
   const toggle = (key: string) => {
-    const toggled = checkIfTrue(newArr, key);
-    setNewArr(toggled);
-    return key;
-  };
-
-  const startTime = () => {
-    const count = newArr.filter((x) => x.isHeld === true);
-    if (count.length === 1) {
-      setTime(Date.now());
-    }
-  };
-
-  const checkIfTrue = (
-    array: { value: number; isHeld: boolean; id: string }[],
-    key: string
-  ) => {
-    return array.map((x) => {
+    const toggled = state.diceArray.map((x) => {
       if (x.id === key) {
         x.isHeld = !x.isHeld;
         return x;
       }
       return x;
     });
+    dispatch({
+      type: ACTION_TYPES.DICE_ARRAY,
+      payload: { newDiceArray: toggled },
+    });
+    return key;
   };
 
+  const startTime = () => {
+    const count = state.diceArray.filter((x) => x.isHeld === true);
+    if (count.length === 1) {
+      dispatch({
+        type: ACTION_TYPES.GAME_DURATION,
+        payload: { gameDuration: Date.now() },
+      });
+    }
+  };
   const makeTen = () => {
-    return newArr.map((x) => (
+    return state.diceArray.map((x) => (
       <Die
         value={x.value}
         isHeld={x.isHeld}
@@ -145,7 +152,7 @@ function App() {
   };
 
   const name = () => {
-    if (tenzies === false) {
+    if (state.tenzies === false) {
       return "Tenzi";
     } else {
       return "You win!";
@@ -153,7 +160,7 @@ function App() {
   };
 
   const text = () => {
-    if (tenzies === false) {
+    if (state.tenzies === false) {
       return "Roll until all dice are the same. Click each die to freeze it at its current value between rolls.";
     } else {
       return "Your time:";
@@ -161,7 +168,7 @@ function App() {
   };
 
   const roll = () => {
-    if (tenzies === false) {
+    if (state.tenzies === false) {
       return "Roll";
     } else {
       return "New game";
@@ -169,14 +176,26 @@ function App() {
   };
 
   const restart = () => {
-    if (tenzies === false) {
-      setNewArr(freeze(newArr));
-      setRollCount((num) => num + 1);
+    if (state.tenzies === false) {
+      dispatch({
+        type: ACTION_TYPES.DICE_ARRAY,
+        payload: { newDiceArray: freeze(state.diceArray) },
+      });
+      dispatch({
+        type: ACTION_TYPES.ROLL_COUNT,
+        payload: { rollCount: state.rollCount + 1 },
+      });
     } else {
-      setDuration("00:00");
-      setNewArr(values());
-      setTenzies(false);
-      setRollCount(0);
+      dispatch({
+        type: ACTION_TYPES.STRING_GAME_DURATION,
+        payload: { stringGameDuration: "00:00" },
+      });
+      dispatch({
+        type: ACTION_TYPES.DICE_ARRAY,
+        payload: { newDiceArray: values() },
+      });
+      dispatch({ type: ACTION_TYPES.TENZIES, payload: { tenzies: false } });
+      dispatch({ type: ACTION_TYPES.ROLL_COUNT, payload: { rollCount: 0 } });
     }
   };
 
@@ -195,15 +214,15 @@ function App() {
   return (
     <>
       <div className="background">
-        {tenzies && <Confetti />}
+        {state.tenzies && <Confetti />}
         <h1>{name()}</h1>
         <p className="text">{text()}</p>
-        {tenzies && <p className="time">{duration}</p>}
+        {state.tenzies && <p className="time">{state.stringGameDuration}</p>}
         <div className="group">{makeTen()}</div>
         <Button roll={() => restart()} buttonText={roll()} />
       </div>
       <Score
-        rollCount={rollCount}
+        rollCount={state.rollCount}
         bestTime={bestTime()}
         bestRoll={bestRoll()}
       />

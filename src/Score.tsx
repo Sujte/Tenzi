@@ -1,6 +1,6 @@
 function Score(prop: {
   rollCount: number;
-  bestTime: number;
+  bestTime: string;
   bestRoll: number;
 }) {
   return (
