@@ -26,20 +26,32 @@ function App() {
     scoreArray: JSON.parse(localStorage.getItem("scores")!) || [],
   });
 
-  useEffect(() => {
-    const value = state.diceArray.map((x) => x.value);
-    const ifTrue = state.diceArray.map((y) => y.isHeld);
-    if (value.every((a) => a === value[0]) && ifTrue.every((a) => a === true)) {
-      dispatch({ type: ACTION_TYPES.TENZIES, payload: { tenzies: true } });
+  const arrayMaker = () => {
+    const scoreObj = {
+      seconds: countedSeconds(),
+      converted: convertedTime(),
+      roll: state.rollCount,
+      id: nanoid(),
+    };
+    dispatch({
+      type: ACTION_TYPES.SCORE_ARRAY,
+      payload: { scoreArray: [scoreObj, ...state.scoreArray] },
+    });
+  };
+
+  const convertedTime = () => {
+    return timeConverter();
+  };
+
+  const startTime = () => {
+    const count = state.diceArray.filter((x) => x.isHeld === true);
+    if (count.length === 1) {
       dispatch({
-        type: ACTION_TYPES.STRING_GAME_DURATION,
-        payload: { stringGameDuration: convertedTime() },
+        type: ACTION_TYPES.GAME_DURATION,
+        payload: { gameDuration: Date.now() },
       });
-      const ans = arrayMaker();
-    } else {
-      startTime();
     }
-  }, [state.diceArray]);
+  };
 
   useEffect(() => {
     localStorage.setItem(" scores", JSON.stringify(state.scoreArray));
@@ -67,19 +79,6 @@ function App() {
       const result = Math.min(...rollArray);
       return result;
     }
-  };
-
-  const arrayMaker = () => {
-    const scoreObj = {
-      seconds: countedSeconds(),
-      converted: convertedTime(),
-      roll: state.rollCount,
-      id: nanoid(),
-    };
-    dispatch({
-      type: ACTION_TYPES.SCORE_ARRAY,
-      payload: { scoreArray: [scoreObj, ...state.scoreArray] },
-    });
   };
 
   const countedSeconds = () => {
@@ -112,10 +111,6 @@ function App() {
     }
   };
 
-  const convertedTime = () => {
-    return timeConverter();
-  };
-
   const toggle = (key: string) => {
     const toggled = state.diceArray.map((x) => {
       if (x.id === key) {
@@ -124,6 +119,18 @@ function App() {
       }
       return x;
     });
+    const value = toggled.map((x) => x.value);
+    const ifTrue = toggled.map((y) => y.isHeld);
+    if (value.every((a) => a === value[0]) && ifTrue.every((a) => a === true)) {
+      dispatch({ type: ACTION_TYPES.TENZIES, payload: { tenzies: true } });
+      dispatch({
+        type: ACTION_TYPES.STRING_GAME_DURATION,
+        payload: { stringGameDuration: convertedTime() },
+      });
+      arrayMaker();
+    } else {
+      startTime();
+    }
     dispatch({
       type: ACTION_TYPES.DICE_ARRAY,
       payload: { newDiceArray: toggled },
@@ -131,15 +138,6 @@ function App() {
     return key;
   };
 
-  const startTime = () => {
-    const count = state.diceArray.filter((x) => x.isHeld === true);
-    if (count.length === 1) {
-      dispatch({
-        type: ACTION_TYPES.GAME_DURATION,
-        payload: { gameDuration: Date.now() },
-      });
-    }
-  };
   const makeTen = () => {
     return state.diceArray.map((x) => (
       <Die
